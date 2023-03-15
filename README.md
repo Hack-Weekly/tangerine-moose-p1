@@ -13,3 +13,5 @@ You can also add `--path={path}` option to specify where you want the component 
 ```
 npx generate-react-cli component MyPageName --path=src/pages
 ```
+
+See here for more information about available commands and options: https://www.npmjs.com/package/generate-react-cli

@@ -4,9 +4,9 @@
 1. Clone the project to your local machine
 2. Switch to remote branch origin/develop
 3. Either open an integrated terminal in \client or just use the cmd "cd client" to navigate to the front end project folder
-4. npm install (make sure you have node installed https://nodejs.org/en/)
-5. npm run dev
-6. navigate to localhost:{port} link in your browser to run the app on local machine
+4. Run `npm install` (make sure you have node installed https://nodejs.org/en/)
+5. After packages installation, run `npm run dev` command
+6. Navigate to localhost:{port} link in your browser to view the app on local machine
 
 # Generate React CLI
 

@@ -2,14 +2,23 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import './App.css'
 import Home from './pages/Home/Home'
+import Login from './pages/Login/Login'
+import { createTheme, CssBaseline } from '@mui/material'
+import { ThemeProvider } from '@emotion/react'
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+  },
+});
+
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <div className="App">
-      <Home/>
-    </div>
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <Login/>
+    </ThemeProvider>
   )
 }
 

@@ -5,7 +5,7 @@ interface HomeProps {}
 
 const Home: FC<HomeProps> = () => (
   <div className={styles.Home}>
-    Home Component
+    Home
   </div>
 );
 

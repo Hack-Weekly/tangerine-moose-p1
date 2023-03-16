@@ -7,6 +7,7 @@ import { createTheme, CssBaseline } from '@mui/material';
 import { ThemeProvider } from '@emotion/react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Chatroom from './pages/Chatroom/Chatroom';
+import FriendsList from './components/FriendsList/FriendsList';
 
 const darkTheme = createTheme({
   palette: {
@@ -19,7 +20,7 @@ function App() {
     <Router>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <Chatroom />
+        <Login />
       </ThemeProvider>
     </Router>
   );

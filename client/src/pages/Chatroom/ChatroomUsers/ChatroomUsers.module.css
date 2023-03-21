@@ -1,0 +1,19 @@
+.users-list {
+    height: calc(100% - 32px);
+}
+
+.ChatroomUsers {
+
+    border: none;
+}
+
+@media screen and (min-width: 900px) {
+    .ChatroomUsers {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: calc(100% - 16px);
+        height: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.23);
+    }
+}

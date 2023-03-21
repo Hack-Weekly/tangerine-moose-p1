@@ -20,6 +20,7 @@ import ListItem from '@mui/material/ListItem';
 import MailIcon from '@mui/icons-material/Mail';
 import MenuIcon from '@mui/icons-material/Menu';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
+import ChatroomUsers from './ChatroomUsers/ChatroomUsers';
 
 const styles = {
   container: {
@@ -44,10 +45,12 @@ const styles = {
     minHeight: '66vh',
     maxHeight: '66vh',
     textAlign: 'left',
+    border: '1px solid rgba(255, 255, 255, 0.23)',
+    px: 1,
     mb: 3,
   },
   message: {
-    mb: 1,
+    mb: 0.5,
   },
   inputContainer: {
     display: 'flex',
@@ -69,15 +72,21 @@ interface ChatroomProps {
   window?: () => Window;
 }
 
+const usersArray: string[] = ['KV'];
+for (let index = 1; index < 25; index++) {
+  usersArray.push('KV ' + index);
+}
+
 const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
   const { window } = props;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [username, setUserName] = useState<string>('KV');
   const [messages, setMessages] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
+  const [users, setUsers] = useState<string[]>(usersArray);
   const textInput = useRef<HTMLInputElement>(null);
   const messageContainerEnd = useRef<HTMLDivElement>(null);
-
+  
   const drawer = (
     <div>
       <Toolbar />
@@ -138,19 +147,18 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
 
   return (
     <Box>
-
       <Typography component='h1' variant='h4' gutterBottom>
         VIP Room
       </Typography>
       <Grid container sx={styles.container}>
-        <Grid item xs={12} md={4}>
-          Hello
+        <Grid item xs={12} md={4} className={css['left-grid-item']}>
+          <ChatroomUsers users={users}/>
         </Grid>
         <Grid item xs={12} md={8}>
           <Box sx={styles.chatBoxContainer}>
             <Box sx={styles.messageContainer} className={`custom-scroll`}>
               {messages.map((message, index) => (
-                <Typography key={index} variant='body1' sx={{ mb: 1 }}>
+                <Typography key={index} variant='body1' sx={styles.message}>
                   {username}: {message}
                 </Typography>
               ))}

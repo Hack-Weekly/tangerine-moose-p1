@@ -17,6 +17,7 @@ declare module '@mui/material/styles' {
     xl: true;
   }
 }
+import Chat from './components/Chat';
 
 const darkTheme = createTheme({
   palette: {
@@ -39,7 +40,7 @@ function App() {
     <Router>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <Chatroom />
+        <Chat/>
       </ThemeProvider>
     </Router>
   );

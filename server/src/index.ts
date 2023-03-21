@@ -7,7 +7,7 @@ import pool from './database/dbconnect'; // Use this to establish a db connectio
 
 
 const app: Express = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 3000;
 
 app.get('/', (req: Request, res: Response) => {
   console.log('someone called this lmao');

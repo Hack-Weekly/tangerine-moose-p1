@@ -40,7 +40,7 @@ function App() {
     <Router>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <Chat/>
+        <Chatroom/>
       </ThemeProvider>
     </Router>
   );

@@ -12,8 +12,8 @@ interface ChatroomUsersProps {
 
 const UserList: FC<ChatroomUsersProps> = ({ users }) => {
   return (
-    <Box className={styles['users-list']}>
-      <List sx={{ py: 0, overflow: 'scroll', height: '100%' }}>
+    <Box className={[styles['users-list']].join(' ')}>
+      <List className="custom-scroll" sx={{ py: 0, overflowY: 'scroll', height: '100%' }}>
         {users.map((user) => (
           <ListItem sx={{ px: 1, py: 0.5 }}>{user}</ListItem>
         ))}
@@ -42,7 +42,7 @@ const ChatroomUsers: FC<ChatroomUsersProps> = ({ users }) => {
           Show users
         </Button>
       )}
-
+      {/* For desktops */}
       {!isSmallScreen && (
         <Fragment>
           <Typography
@@ -55,7 +55,7 @@ const ChatroomUsers: FC<ChatroomUsersProps> = ({ users }) => {
           <UserList users={users} />
         </Fragment>
       )}
-
+      {/* Modal for mobile & tablet devices */}
       <Modal
         open={openUsersList && isSmallScreen}
         onClose={handleCloseUsersList}

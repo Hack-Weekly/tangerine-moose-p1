@@ -4,8 +4,17 @@ import http from 'http';
 import { Server, Socket } from 'socket.io';
 import { User } from './interfaces/User';
 
+type Message = {
+  content: string;
+  to?: string;
+  sender: string;
+  chatName: string;
+  isChannel: boolean;
+  date: Date;
+}
+
 type Messages = {
-  [key: string]: any[]
+  [key: string]: Message[]
 }
 
 const app = express();
@@ -52,18 +61,19 @@ io.of("/").adapter.on("join-room", async (room, id) => {
 
 io.of("/").adapter.on("leave-room", async (room, id) => {
   console.log(`User ID: ${id} has left room ${room}`);
-  
+
   const sockets = await io.in(room).fetchSockets();
-  
+
   const usersInRoom = sockets.map(socket => {
     return {
       id: socket.id,
       username: socket.data.username,
     } as User;
   });
-  
+
   io.to(room).emit('update_room_users', usersInRoom, room);
 });
+
 io.on('connection', (socket: Socket) => {
   console.log('Connected:', socket.id);
   // console.log(`messages:`, messages);
@@ -125,30 +135,20 @@ io.on('connection', (socket: Socket) => {
     }); // Pass callback from client to server.
   });
 
-  socket.on('send_message2', ({ content, to, sender, chatName, isChannel }) => {
+  socket.on('send_message2', ({ content, to, sender, chatName, isChannel, date }: Message) => {
+    let payload;
     if (isChannel) {
-      const payload = {
-        content,
-        chatName,
-        sender,
-      }
       /* "to" is assummed to be a channel name. 
-      If the message is being sent to a specific channel, then the message will be sent to everyone in the channel.
-      */
-      socket.to(to).emit('new_message', payload);
+      If the message is being sent to a specific channel, then the message will be sent to everyone in the channel. */
+      payload = { content, chatName, sender, date }
     } else {
-      const payload = {
-        content,
-        chatName: sender,
-        sender,
-      }
       /* "to" is assummed to be a socketId. 
-      If the message is being sent to a specific user, then the message will be sent to only that user.
-      */
-      socket.to(to).emit('new_message', payload);
+      If the message is being sent to a specific user, then the message will be sent to only that user. */
+      payload = { content, chatName: sender, sender, date }
     }
+    to && socket.to(to).emit('new_message', payload);
     if (messages[chatName]) {
-      messages[chatName].push({ content, sender });
+      messages[chatName].push({ content, sender, chatName, isChannel, date });
     }
   });
 

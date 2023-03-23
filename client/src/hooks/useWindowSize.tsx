@@ -1,4 +1,4 @@
-import { Size } from 'interfaces/Size';
+import { Size } from 'interfaces/size';
 import { useState, useEffect } from "react";
 
 // Hook

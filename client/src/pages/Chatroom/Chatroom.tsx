@@ -15,6 +15,7 @@ import { RootState } from 'store/store';
 import { addUserToChannel, setChannels, setCurrentChat, setUsersOfChannel } from 'features/user/userSlice';
 import { useDispatch } from 'react-redux';
 import { User } from 'interfaces/User';
+import { format, parseISO } from 'date-fns';
 
 interface ChatroomProps {
   window?: () => Window;
@@ -27,6 +28,8 @@ type Messages = {
 interface Message {
   sender: string;
   content: string;
+  date: Date | String;
+  chatName: string;
 }
 
 const initialMessagesState: Messages = {
@@ -38,10 +41,10 @@ const initialMessagesState: Messages = {
 const rooms = ['general', 'random', 'jokes'];
 
 const roomsState = {
-  'general': {
+  general: {
     users: ['KV', 'John', 'Jane'],
   },
-}
+};
 
 const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
   const dispatch = useDispatch();
@@ -67,18 +70,24 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); // prevent default form submit behavior
     if (!currentChat) return;
+    // build payload to send to server
     const payload = {
       content: inputValue,
       to: channels[currentChat].isChannel ? currentChat : channels[currentChat].receiverId,
       sender: username,
       chatName: currentChat,
       isChannel: channels[currentChat].isChannel,
+      date: new Date(),
     };
+
     socket.emit('send_message2', payload);
+    // add message to local messages state
     const newMessages = immer(messages, (draft) => {
       draft[currentChat].push({
         sender: username,
         content: inputValue,
+        date: new Date(),
+        chatName: currentChat,
       });
     });
 
@@ -96,7 +105,7 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
       });
       setMessages(newMessages);
     }
-    console.log('currentChat', currentChat)
+    console.log('currentChat', currentChat);
     dispatch(setCurrentChat(currentChat));
     joinRoom(currentChat);
   };
@@ -113,13 +122,17 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
   const roomJoinCallback = (response: any, room: string) => {
     console.log('roomJoinCallback', response, room);
     const newMessages = immer(messages, (draft) => {
-      draft[room] = response.messages;
+      const roomMessages = response.messages as Message[];
+      roomMessages.forEach((message) => {
+        message.date = parseISO(message.date as string);
+      });
+      draft[room] = roomMessages;
     });
     console.log('Room users -> ', response.users);
     console.log('Room messages:', response.messages);
     setMessages(newMessages);
     const users = response.users as User[];
-    (users) && dispatch(setUsersOfChannel({ channel: room, users: users}));
+    users && dispatch(setUsersOfChannel({ channel: room, users: users }));
     console.log(currentChat, room);
   };
 
@@ -139,17 +152,47 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    function onNewMessage(message: Message) {
+      console.log(message);
+      setMessages((messages) => {
+        const newMessages = immer(messages, (draft) => {
+          if (draft[message.chatName]) {
+            draft[message.chatName].push(message);
+          } else {
+            draft[message.chatName] = [message];
+          }
+        });
+        return newMessages;
+      });
+    }
+
+    socket.on('new_message', onNewMessage);
+
+    return () => {
+      socket.off('new_message', onNewMessage);
+    };
+  }, []);
+
   const isSmallScreen = useMediaQuery(useTheme().breakpoints.down('md'));
 
   const renderRooms = (room: string) => {
     const currentChat = room;
-
     return (
       <Box key={room} onClick={() => toggleChat(currentChat)}>
         {room}
       </Box>
-    )
-  }
+    );
+  };
+
+  const renderMessages = ({ sender, content, date }: { sender: string; content: string, date: Date }, index: number) => {
+    const formattedDate = date ? format(date, 'h:mm aa') : '';
+    return (
+      <Typography key={index} variant='body1' sx={{ mb: 0.5 }}>
+        {`[${formattedDate}]`} {sender}: {content}
+      </Typography>
+    );
+  };
 
   return (
     <Box id='chatroom' sx={styles.chatroom}>
@@ -168,7 +211,7 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
             </Box>
           </Fragment>
         )}
-        {!currentChat && <Box sx={{flex:1}}>Channels</Box>}
+        {!currentChat && <Box sx={{ flex: 1 }}>Channels</Box>}
       </Box>
       {/* Chatroom Content */}
       {currentChat && (
@@ -177,12 +220,8 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
             <ChatroomUsers showUsers={showUsers} onHideUsers={handleHideUsers} />
           </Box>
           <Box id='right-panel' sx={styles.rightPanel}>
-            <Box id='chatroom-messages' className={css['border']} sx={{ flex: 1, overflow: 'scroll' }}>
-              {messages[currentChat].map(({ sender, content }, index) => (
-                <Typography key={index} variant='body1' sx={{ mb: 0.5 }}>
-                  {sender}: {content}
-                </Typography>
-              ))}
+            <Box id='chatroom-messages' className={`custom-scroll ${css['border']}`} sx={{ flex: 1, overflowY: 'scroll', px: 1, py: 1 }}>
+              {messages[currentChat].map(renderMessages)}
               <div ref={messageContainerEnd}></div>
             </Box>
             <Box id='chatroom-group-inputs'>

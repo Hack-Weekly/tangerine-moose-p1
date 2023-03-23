@@ -29,7 +29,7 @@ const SocketIO: FC<SocketIOProps> = ({ children }: SocketIOProps) => {
       dispatch(setUsers(users));
     }
     function onNewMessage({ content, chatName, sender }: any) {
-      console.log({ content, chatName, sender });
+      // console.log({ content, chatName, sender });
     }
     function onUpdateRoomUsers(users: User[], channel: string) {
       console.log('[onUpdateRoomUsers]', channel , users );
@@ -45,7 +45,7 @@ const SocketIO: FC<SocketIOProps> = ({ children }: SocketIOProps) => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('update_users', onUpdateUsers);
-      socket.off('new_message', onUpdateUsers);
+      socket.off('new_message', onNewMessage);
       socket.off('update_room_users', onUpdateRoomUsers);
     };
   }, []);

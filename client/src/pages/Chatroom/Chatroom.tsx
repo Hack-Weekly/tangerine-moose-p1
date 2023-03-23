@@ -49,11 +49,8 @@ const roomsState = {
 const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
   const dispatch = useDispatch();
   const { window } = props;
-  const [username, setUserName] = useState<string>('KV'); // current username
   const [inputValue, setInputValue] = useState<string>(''); // input from message text field
-  // const [currentChat, setCurrentChat] = useState<ChatInfo>({ isChannel: true, chatName: 'general', receiverId: '' });
   const [connectedRooms, setConnectedRooms] = useState<string[]>(['general']);
-  const [allUsers, setAllUsers] = useState<string[]>([]);
   const [messages, setMessages] = useState<Messages>(initialMessagesState);
   const [showUsers, setShowUsers] = React.useState(false);
 
@@ -62,6 +59,7 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
 
   const currentChat = useSelector((state: RootState) => state.user.currentChat);
   const channels = useSelector((state: RootState) => state.user.channels);
+  const username = useSelector((state: RootState) => state.user.username);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
@@ -154,7 +152,7 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
 
   useEffect(() => {
     function onNewMessage(message: Message) {
-      console.log(message);
+      message.date = parseISO(message.date as string);
       setMessages((messages) => {
         const newMessages = immer(messages, (draft) => {
           if (draft[message.chatName]) {
@@ -185,11 +183,12 @@ const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
     );
   };
 
-  const renderMessages = ({ sender, content, date }: { sender: string; content: string, date: Date }, index: number) => {
-    const formattedDate = date ? format(date, 'h:mm aa') : '';
+  const renderMessages = (message: Message, index: number) => {
+    const { sender, content, date } = message;
+    const formattedDate = (date instanceof Date) ? `[${format(date, 'h:mm aa')}] ` : '';
     return (
       <Typography key={index} variant='body1' sx={{ mb: 0.5 }}>
-        {`[${formattedDate}]`} {sender}: {content}
+        {formattedDate}{sender}: {content}
       </Typography>
     );
   };

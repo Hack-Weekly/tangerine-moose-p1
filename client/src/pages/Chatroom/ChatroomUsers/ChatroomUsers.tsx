@@ -1,69 +1,58 @@
 import { Box, Button, List, ListItem, Modal, Typography } from '@mui/material';
 import React, { FC, Fragment } from 'react';
 import styles from './ChatroomUsers.module.css';
-import { grey } from '@mui/material/colors';
 import { bgcolor, useTheme } from '@mui/system';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { Size } from '../../../interfaces/size';
+import { useSelector } from 'react-redux';
+import { RootState } from 'store/store';
+import { grey } from '@mui/material/colors';
 
 interface ChatroomUsersProps {
-  users: string[];
+  showUsers: boolean;
+  onHideUsers: () => void;
 }
 
-const UserList: FC<ChatroomUsersProps> = ({ users }) => {
+const UserList = () => {
+  const users = useSelector((state: RootState) => state.user.users);
+  const sessionId = useSelector((state: RootState) => state.user.sessionId);
+  const channels = useSelector((state: RootState) => state.user.channels);
+  const currentChat = useSelector((state: RootState) => state.user.currentChat);
+  const usersInRoom = currentChat && channels[currentChat].users
+
   return (
-    <Box className={[styles['users-list']].join(' ')}>
-      <List className="custom-scroll" sx={{ py: 0, overflowY: 'scroll', height: '100%' }}>
-        {users.map((user) => (
-          <ListItem sx={{ px: 1, py: 0.5 }}>{user}</ListItem>
+    <List className='custom-scroll' sx={{ py: 0, overflowY: 'scroll', height: '100%' }}>
+      {usersInRoom &&
+        usersInRoom.map((user, index) => (
+          <ListItem key={index} sx={{ px: 1, py: 0.5 }}>
+            {user.username} {user.id === sessionId && '(You)'}
+          </ListItem>
         ))}
-      </List>
-    </Box>
+    </List>
   );
 };
 
-const ChatroomUsers: FC<ChatroomUsersProps> = ({ users }) => {
-  const theme = useTheme();
-  const [openUsersList, setOpenUsersList] = React.useState(false);
-  const handleOpenUsersList = () => setOpenUsersList(true);
-  const handleCloseUsersList = () => setOpenUsersList(false);
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
+const ChatroomUsers: FC<ChatroomUsersProps> = ({ showUsers, onHideUsers }) => {
+  const isSmallScreen = useMediaQuery(useTheme().breakpoints.down('md'));
+
+  const handleHideUsers = () => {
+    onHideUsers();
+  };
 
   return (
-    <Box className={styles.ChatroomUsers} sx={{ mr: 1 }}>
-      {isSmallScreen && (
-        <Button
-          variant='outlined'
-          color='primary'
-          type='submit'
-          onClick={handleOpenUsersList}
-          sx={{ mb: 1 }}
-        >
-          Show users
-        </Button>
-      )}
+    <Box id='ChatroomUsers' className={styles.ChatroomUsers} sx={{}}>
       {/* For desktops */}
       {!isSmallScreen && (
         <Fragment>
-          <Typography
-            component='h2'
-            variant='h6'
-            sx={{ textAlign: 'center', position: 'sticky', top: 0 }}
-          >
+          <Typography component='h2' variant='h6' sx={{ textAlign: 'center', position: 'sticky', top: 0, bgcolor: grey[900], zIndex: 1 }}>
             Users
           </Typography>
-          <UserList users={users} />
+          <UserList />
         </Fragment>
       )}
       {/* Modal for mobile & tablet devices */}
-      <Modal
-        open={openUsersList && isSmallScreen}
-        onClose={handleCloseUsersList}
-        aria-labelledby='modal-modal-title'
-        aria-describedby='modal-modal-description'
-      >
+      <Modal open={showUsers && isSmallScreen} onClose={handleHideUsers} aria-labelledby='modal-modal-title' aria-describedby='modal-modal-description'>
         <Box sx={modalContentStyle}>
-          <UserList users={users} />
+          <UserList />
         </Box>
       </Modal>
     </Box>

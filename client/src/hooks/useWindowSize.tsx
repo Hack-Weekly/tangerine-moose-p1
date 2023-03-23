@@ -1,5 +1,5 @@
+import { Size } from 'interfaces/Size';
 import { useState, useEffect } from "react";
-import { Size } from '../interfaces/size';
 
 // Hook
 export function useWindowSize(): Size {

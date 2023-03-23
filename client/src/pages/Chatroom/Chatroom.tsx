@@ -1,162 +1,242 @@
-import React, { FC, useEffect, useRef, useState } from 'react';
-import {
-  Box,
-  createTheme,
-  Drawer,
-  Grid,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Theme,
-} from '@mui/material';
+import React, { FC, Fragment, useEffect, useRef, useState } from 'react';
+import { Box, Grid, useMediaQuery } from '@mui/material';
 import css from './Chatroom.module.css';
 import { TextField, Button, Typography } from '@mui/material';
-import FormControl from '@mui/material/FormControl';
 import { red, grey } from '@mui/material/colors';
-import Toolbar from '@mui/material/Toolbar';
-import Divider from '@mui/material/Divider';
-import { List } from '@mui/icons-material';
-import ListItem from '@mui/material/ListItem';
-import MailIcon from '@mui/icons-material/Mail';
-import MenuIcon from '@mui/icons-material/Menu';
-import InboxIcon from '@mui/icons-material/MoveToInbox';
 import ChatroomUsers from './ChatroomUsers/ChatroomUsers';
-
-const styles = {
-  container: {
-    borderRadius: 4,
-    backgroundColor: grey[900],
-    minWidth: '66vw',
-    padding: { xs: 1.5, sm: 2, md: 3 },
-  },
-  chatBoxContainer: {
-    // display: 'flex',
-    // flexDirection: 'column',
-    // backgroundColor: grey[900],
-    // minWidth: '66vw',
-    // padding: 3,
-    // borderRadius: 4,
-  },
-  messageContainer: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    overflowY: 'scroll',
-    minHeight: '66vh',
-    maxHeight: '66vh',
-    textAlign: 'left',
-    border: '1px solid rgba(255, 255, 255, 0.23)',
-    px: 1,
-    mb: 3,
-  },
-  message: {
-    mb: 0.5,
-  },
-  inputContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  input: {
-    flex: 1,
-    mr: 1,
-  },
-};
-const drawerWidth = 240;
+import { Socket } from 'socket.io-client';
+import immer from 'immer';
+import { socket } from 'socket';
+import { useTheme } from '@mui/system';
+import LeaveRoomButton from 'components/LeaveRoomButton/LeaveRoomButton';
+import { ChatInfo } from 'interfaces/ChatInfo';
+import { useSelector } from 'react-redux';
+import { RootState } from 'store/store';
+import { addUserToChannel, setChannels, setCurrentChat, setUsersOfChannel } from 'features/user/userSlice';
+import { useDispatch } from 'react-redux';
+import { User } from 'interfaces/User';
 
 interface ChatroomProps {
-  /**
-   * Injected by the documentation to work in an iframe.
-   * You won't need it on your project.
-   */
   window?: () => Window;
 }
 
-const usersArray: string[] = ['KV'];
-for (let index = 1; index < 25; index++) {
-  usersArray.push('KV ' + index);
+type Messages = {
+  [key: string]: Message[];
+};
+
+interface Message {
+  sender: string;
+  content: string;
+}
+
+const initialMessagesState: Messages = {
+  general: [],
+  random: [],
+  jokes: [],
+};
+
+const rooms = ['general', 'random', 'jokes'];
+
+const roomsState = {
+  'general': {
+    users: ['KV', 'John', 'Jane'],
+  },
 }
 
 const Chatroom: FC<ChatroomProps> = (props: ChatroomProps) => {
+  const dispatch = useDispatch();
   const { window } = props;
-  const [username, setUserName] = useState<string>('KV');
-  const [messages, setMessages] = useState<string[]>([]);
-  const [inputValue, setInputValue] = useState<string>('');
-  const [users, setUsers] = useState<string[]>(usersArray);
+  const [username, setUserName] = useState<string>('KV'); // current username
+  const [inputValue, setInputValue] = useState<string>(''); // input from message text field
+  // const [currentChat, setCurrentChat] = useState<ChatInfo>({ isChannel: true, chatName: 'general', receiverId: '' });
+  const [connectedRooms, setConnectedRooms] = useState<string[]>(['general']);
+  const [allUsers, setAllUsers] = useState<string[]>([]);
+  const [messages, setMessages] = useState<Messages>(initialMessagesState);
+  const [showUsers, setShowUsers] = React.useState(false);
+
   const textInput = useRef<HTMLInputElement>(null);
   const messageContainerEnd = useRef<HTMLDivElement>(null);
 
+  const currentChat = useSelector((state: RootState) => state.user.currentChat);
+  const channels = useSelector((state: RootState) => state.user.channels);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessages([...messages, inputValue]);
-    setInputValue('');
-    textInput.current?.focus();
+    event.preventDefault(); // prevent default form submit behavior
+    if (!currentChat) return;
+    const payload = {
+      content: inputValue,
+      to: channels[currentChat].isChannel ? currentChat : channels[currentChat].receiverId,
+      sender: username,
+      chatName: currentChat,
+      isChannel: channels[currentChat].isChannel,
+    };
+    socket.emit('send_message2', payload);
+    const newMessages = immer(messages, (draft) => {
+      draft[currentChat].push({
+        sender: username,
+        content: inputValue,
+      });
+    });
+
+    console.log(`submitting message: ${inputValue} to ${currentChat}`);
+    setMessages(newMessages);
+
+    setInputValue(''); // clear input field
+    textInput.current?.focus(); // focus on last message
+  };
+
+  const toggleChat = (currentChat: string) => {
+    if (!messages[currentChat]) {
+      const newMessages = immer(messages, (draft) => {
+        draft[currentChat] = [];
+      });
+      setMessages(newMessages);
+    }
+    console.log('currentChat', currentChat)
+    dispatch(setCurrentChat(currentChat));
+    joinRoom(currentChat);
+  };
+
+  const joinRoom = (room: string) => {
+    const newConnectedRooms = immer(connectedRooms, (draft) => {
+      draft.push(room);
+    });
+
+    socket.emit('join_room', room, (response: any) => roomJoinCallback(response, room));
+    setConnectedRooms(newConnectedRooms);
+  };
+
+  const roomJoinCallback = (response: any, room: string) => {
+    console.log('roomJoinCallback', response, room);
+    const newMessages = immer(messages, (draft) => {
+      draft[room] = response.messages;
+    });
+    console.log('Room users -> ', response.users);
+    console.log('Room messages:', response.messages);
+    setMessages(newMessages);
+    const users = response.users as User[];
+    (users) && dispatch(setUsersOfChannel({ channel: room, users: users}));
+    console.log(currentChat, room);
   };
 
   const scrollToBottom = () => {
     messageContainerEnd.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const toggleShowUsers = (e: React.MouseEvent<HTMLElement>) => {
+    setShowUsers(!showUsers);
+  };
+
+  const handleHideUsers = () => {
+    setShowUsers(false);
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const container =
-    window !== undefined ? () => window().document.body : undefined;
+  const isSmallScreen = useMediaQuery(useTheme().breakpoints.down('md'));
+
+  const renderRooms = (room: string) => {
+    const currentChat = room;
+
+    return (
+      <Box key={room} onClick={() => toggleChat(currentChat)}>
+        {room}
+      </Box>
+    )
+  }
 
   return (
-    <Box>
-      <Typography component='h1' variant='h4' gutterBottom>
-        VIP Room
-      </Typography>
-      <Grid container sx={styles.container}>
-        <Grid item xs={12} md={4} className={css['left-grid-item']}>
-          <ChatroomUsers users={users}/>
-        </Grid>
-        <Grid item xs={12} md={8}>
-          <Box sx={styles.chatBoxContainer}>
-            <Box sx={styles.messageContainer} className={`custom-scroll`}>
-              {messages.map((message, index) => (
-                <Typography key={index} variant='body1' sx={styles.message}>
-                  {username}: {message}
+    <Box id='chatroom' sx={styles.chatroom}>
+      {/* App Bar */}
+      <Box id='chatroom-nav' sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', textAlign: 'center' }}>
+        {currentChat && (
+          <Fragment>
+            <Typography variant='h6' component='div'>
+              Room: {currentChat}
+            </Typography>
+            <Box id='chatroom-btn-group'>
+              <Button sx={{ display: { xs: 'inline-flex', md: 'none' } }} variant='outlined' color='primary' type='submit' onClick={toggleShowUsers}>
+                Users
+              </Button>
+              <LeaveRoomButton sx={{ ml: 1 }} />
+            </Box>
+          </Fragment>
+        )}
+        {!currentChat && <Box sx={{flex:1}}>Channels</Box>}
+      </Box>
+      {/* Chatroom Content */}
+      {currentChat && (
+        <Box id='chatroom-content' sx={{ minHeight: 0, display: 'flex', flex: 1, gap: 2 }}>
+          <Box id='left-panel' className={css['border']} sx={{ overflowY: 'scroll', width: '30%', display: { xs: 'none', md: 'block' } }}>
+            <ChatroomUsers showUsers={showUsers} onHideUsers={handleHideUsers} />
+          </Box>
+          <Box id='right-panel' sx={styles.rightPanel}>
+            <Box id='chatroom-messages' className={css['border']} sx={{ flex: 1, overflow: 'scroll' }}>
+              {messages[currentChat].map(({ sender, content }, index) => (
+                <Typography key={index} variant='body1' sx={{ mb: 0.5 }}>
+                  {sender}: {content}
                 </Typography>
               ))}
               <div ref={messageContainerEnd}></div>
             </Box>
-            <Box
-              component='form'
-              onSubmit={handleSubmit}
-              sx={styles.inputContainer}
-            >
-              <TextField
-                id='message-input'
-                variant='outlined'
-                value={inputValue}
-                onChange={handleInputChange}
-                sx={styles.input}
-                InputLabelProps={{ shrink: false }}
-                autoComplete='off'
-                inputRef={textInput}
-              />
-              <Button
-                disabled={inputValue === ''}
-                variant='outlined'
-                color='primary'
-                type='submit'
-              >
-                Send
-              </Button>
+            <Box id='chatroom-group-inputs'>
+              <Box component='form' onSubmit={handleSubmit} sx={styles.inputContainer}>
+                <TextField
+                  id='message-input'
+                  variant='outlined'
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  sx={{ flex: 1, mr: 1 }}
+                  InputLabelProps={{ shrink: false }}
+                  autoComplete='off'
+                  inputRef={textInput}
+                />
+                <Button disabled={inputValue === ''} variant='outlined' color='primary' type='submit'>
+                  Send
+                </Button>
+              </Box>
             </Box>
           </Box>
-        </Grid>
-      </Grid>
+        </Box>
+      )}
+      {/* Room list */}
+      {!currentChat && (
+        <Box id='chatroom-channels' sx={{ minHeight: 0, display: 'flex', flex: 1, gap: 2 }}>
+          {rooms.map(renderRooms)}
+        </Box>
+      )}
     </Box>
   );
 };
 
 export default Chatroom;
+
+const styles = {
+  chatroom: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: grey[900],
+    padding: { xs: 1.5, sm: 2, md: 3 },
+    gap: 2,
+  },
+  rightPanel: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+    width: { xs: '100%', md: '70%' },
+  },
+  inputContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+};
